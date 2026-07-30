@@ -1,0 +1,41 @@
+{
+  "name": "opencode-tmux-notify",
+  "version": "1.0.0",
+  "description": "Reliable desktop notifications for OpenCode running over SSH in inactive tmux sessions",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/christian-taillon/opencode-tmux-notify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/christian-taillon/opencode-tmux-notify/issues"
+  },
+  "homepage": "https://github.com/christian-taillon/opencode-tmux-notify#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm && tsc --emitDeclarationOnly --outDir dist",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run typecheck && pnpm test && pnpm run build"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.9",
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}

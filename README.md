@@ -4,8 +4,21 @@ Reliable desktop notifications for OpenCode running over SSH in tmux.
 
 Notifications reach your laptop even when the OpenCode tmux session is
 inactive, hidden, or detached. The plugin writes OSC 777 directly to every
-attached tmux client TTY, so it works with Ghostty without any tmux
-passthrough setup.
+attached tmux client TTY, so it works with any OSC 777-capable terminal
+without any tmux passthrough setup.
+
+## Supported terminals
+
+OSC 777 desktop notifications are supported by:
+
+- [Ghostty](https://ghostty.org) (default on)
+- [WezTerm](https://wezfurlong.org/wezterm/)
+- [foot](https://codeberg.org/dnkl/foot)
+- [rxvt-unicode](https://rxvt-unicode.sourceforge.net/) (with the `notify` Perl extension)
+
+Kitty and iTerm2 use their own notification protocols (OSC 99 and OSC 9
+respectively) and are not supported. Alacritty has no desktop notification
+support.
 
 ## Install
 
@@ -26,7 +39,7 @@ needed.
 ## How it works
 
 ```
-OpenCode event -> find attached tmux clients -> write OSC 777 to each client TTY -> Ghostty notifies
+OpenCode event -> find attached tmux clients -> write OSC 777 to each client TTY -> terminal notifies
 ```
 
 The notification goes straight to the attached client, not the originating

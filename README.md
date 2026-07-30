@@ -9,16 +9,19 @@ passthrough setup.
 
 ## Install
 
-Add one line to `~/.config/opencode/opencode.json`:
+Build the plugin and copy it into OpenCode's global plugin directory:
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-tmux-notify"]
-}
+```sh
+git clone https://github.com/christian-taillon/opencode-tmux-notify.git
+cd opencode-tmux-notify
+pnpm install && pnpm run build
+mkdir -p ~/.config/opencode/plugins
+cp dist/index.js ~/.config/opencode/plugins/opencode-tmux-notify.js
 ```
 
-Restart OpenCode. That's it.
+Restart OpenCode. That's it. OpenCode auto-discovers any `*.js` file in
+`~/.config/opencode/plugins/` at startup, so no `opencode.json` entry is
+needed.
 
 ## How it works
 

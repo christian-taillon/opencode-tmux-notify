@@ -4,7 +4,7 @@ import { normalizeConfig } from "../src/config.js"
 
 const input = { directory: "/home/christian/projects/demo" } as never
 
-test("notifies every attached client without tmux passthrough", async () => {
+test("notifies every attached client", async () => {
   const writes: Array<[string, string]> = []
   const calls: string[][] = []
   const plugin = createPlugin({

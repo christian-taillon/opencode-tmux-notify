@@ -1,11 +1,12 @@
 # opencode-tmux-notify
 
-Reliable desktop notifications for OpenCode running over SSH in tmux.
+Reliable desktop notifications for OpenCode in terminals and tmux, locally or
+over SSH.
 
-Notifications reach your laptop even when the OpenCode tmux session is
-inactive, hidden, or detached. The plugin writes OSC 777 directly to every
-attached tmux client TTY, so it works with any OSC 777-capable terminal
-without any tmux passthrough setup.
+Notifications reach your desktop even when the OpenCode tmux session is
+inactive or hidden. The plugin writes the selected notification protocol
+directly to the terminal TTY, including each attached tmux client TTY, so no
+tmux passthrough setup is required.
 
 ## Supported terminals
 
@@ -16,9 +17,12 @@ OSC 777 desktop notifications are supported by:
 - [foot](https://codeberg.org/dnkl/foot)
 - [rxvt-unicode](https://rxvt-unicode.sourceforge.net/) (with the `notify` Perl extension)
 
+Kitty uses its own OSC 99 notification protocol and is supported automatically.
+iTerm2 uses OSC 9 and is also supported automatically.
+
 Kitty and iTerm2 use their own notification protocols (OSC 99 and OSC 9
-respectively) and are not supported. Alacritty has no desktop notification
-support.
+respectively). Apple Terminal and Alacritty do not provide a portable
+notification protocol supported by this plugin.
 
 ## Install
 
@@ -39,11 +43,17 @@ needed.
 ## How it works
 
 ```
-OpenCode event -> find attached tmux clients -> write OSC 777 to each client TTY -> terminal notifies
+OpenCode event -> find attached tmux clients -> select one notification protocol per client -> write to the client TTY -> terminal notifies
 ```
 
 The notification goes straight to the attached client, not the originating
 pane, so the OpenCode session can be in the background.
+
+`protocol: "auto"` is the default. It detects Kitty and iTerm2 from the
+terminal environment or tmux client metadata, and uses OSC 777 otherwise.
+Only one protocol is sent per client to avoid duplicate notifications in
+terminals that support multiple protocols. You can explicitly set
+`"osc777"`, `"osc99"`, or `"osc9"` if detection is unavailable over SSH.
 
 ## Notifications
 
@@ -70,6 +80,7 @@ Works out of the box. To customize, create
     "session.idle": true,
     "session.error": true
   },
+  "protocol": "auto",
   "notifyChildSessions": false,
   "notifyAllClients": true,
   "rememberLastTarget": true
@@ -101,4 +112,5 @@ pnpm test
 pnpm run build
 ```
 
-Zero runtime dependencies. Requires at least one attached tmux client.
+Zero runtime dependencies. A tmux-originated notification requires an attached
+tmux client; a non-tmux OpenCode process writes directly to `/dev/tty`.

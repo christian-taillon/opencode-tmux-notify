@@ -2,9 +2,11 @@ import { appendFileSync } from "node:fs"
 import { basename } from "node:path"
 import { hostname } from "node:os"
 import type { Plugin } from "@opencode-ai/plugin"
-import { loadConfig, type NotifyConfig } from "./config.js"
+import { loadConfig, type NotifyConfig, type Protocol } from "./config.js"
 import { eventSessionIds, idleKey, isTopLevelSession, shouldNotify, type EventLike } from "./events.js"
 import { osc777 } from "./osc777.js"
+import { osc9 } from "./osc9.js"
+import { osc99 } from "./osc99.js"
 import { sanitize, shortHostname } from "./sanitize.js"
 import { createTmuxHelpers, type Command, type PaneLocation } from "./tmux.js"
 
@@ -16,6 +18,27 @@ const notificationTitles: Record<string, string> = {
 }
 
 const IDLE_DEDUPLICATION_WINDOW_MS = 1_000
+
+function detectProtocol(environment: NodeJS.ProcessEnv, terminal = ""): Exclude<Protocol, "auto"> {
+  const values = [terminal, environment.TERM_PROGRAM, environment.LC_TERMINAL, environment.TERM]
+    .filter(Boolean)
+    .map((value) => value!.toLowerCase())
+
+  if (values.some((value) => value.includes("kitty"))) return "osc99"
+  if (values.some((value) => value.includes("iterm"))) return "osc9"
+  return "osc777"
+}
+
+function notificationOutput(
+  protocol: Exclude<Protocol, "auto">,
+  title: string,
+  body: string,
+  id: string,
+): string {
+  if (protocol === "osc99") return osc99(title, body, id)
+  if (protocol === "osc9") return osc9(title, body)
+  return osc777(title, body)
+}
 
 export interface NotifyOptions {
   config?: NotifyConfig
@@ -69,6 +92,7 @@ export function createPlugin(options: NotifyOptions = {}): Plugin {
   const tmux = createTmuxHelpers(options.command)
   const seenIdle = new Map<string, number>()
   const now = options.now ?? Date.now
+  let notificationSequence = 0
 
   return async ({ directory, client }) => ({
     event: async ({ event }) => {
@@ -96,10 +120,14 @@ export function createPlugin(options: NotifyOptions = {}): Plugin {
       if (startupPane && config.rememberLastTarget) await tmux.rememberPane(startupPane)
       const title = notificationTitles[String(candidate.type)]
       const body = notificationBody(directory, location, options.host ?? hostname())
-      const output = osc777(title, body)
+      const id = `opencode-${now()}-${notificationSequence++}`
 
       if (!startupPane) {
         try {
+          const protocol = config.protocol === "auto"
+            ? detectProtocol(environment)
+            : config.protocol
+          const output = notificationOutput(protocol, title, body, id)
           append(tty, output)
         } catch {
           // /dev/tty is not always available in daemonized or test environments.
@@ -108,9 +136,13 @@ export function createPlugin(options: NotifyOptions = {}): Plugin {
       }
 
       if (!location) return
-      for (const clientTty of await tmux.clientTtys(location.session, config.notifyAllClients)) {
+      for (const client of await tmux.clientTargets(location.session, config.notifyAllClients)) {
         try {
-          append(clientTty, output)
+          const protocol = config.protocol === "auto"
+            ? detectProtocol(environment, client.termType || client.termName)
+            : config.protocol
+          const output = notificationOutput(protocol, title, body, id)
+          append(client.tty, output)
         } catch {
           // A client can detach between list-clients and appendFile.
         }

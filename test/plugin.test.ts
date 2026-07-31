@@ -14,7 +14,7 @@ test("notifies every attached client", async () => {
     command: async (_command, args) => {
       calls.push(args)
       if (args[0] === "display-message") return "main\t0\t2\tCode\n"
-      if (args[0] === "list-clients") return "/dev/pts/3\n/dev/pts/4\n"
+      if (args[0] === "list-clients") return "/dev/pts/3\t\t\n/dev/pts/4\t\t\n"
       return ""
     },
     appendFile: (path, data) => writes.push([path, data]),
@@ -26,7 +26,7 @@ test("notifies every attached client", async () => {
   expect(writes).toHaveLength(2)
   expect(writes[0]?.[0]).toBe("/dev/pts/3")
   expect(writes[0]?.[1]).toBe("\u001b]777;notify;OpenCode: Session error;dev • demo • main • 0 • 2 • Code\u0007")
-  expect(calls.at(-1)).toEqual(["list-clients", "-F", "#{client_tty}"])
+  expect(calls.at(-1)).toEqual(["list-clients", "-F", "#{client_tty}\t#{client_termname}\t#{client_termtype}"])
 })
 
 test("maps every supported event to its notification title", async () => {
@@ -82,6 +82,61 @@ test("uses /dev/tty directly without a startup tmux pane and deduplicates idle",
 
   expect(writes).toHaveLength(2)
   expect(writes[0]?.[0]).toBe("/tmp/tty")
+})
+
+test("uses Kitty OSC 99 when the terminal is Kitty", async () => {
+  const writes: string[] = []
+  const plugin = createPlugin({
+    environment: { TERM_PROGRAM: "kitty" },
+    config: normalizeConfig({}),
+    now: () => 42,
+    appendFile: (_path, data) => writes.push(data),
+  })
+  const hooks = await plugin(input)
+
+  await hooks.event?.({ event: { type: "session.error", properties: { sessionID: "main" } } as never })
+
+  expect(writes[0]).toMatch(/^\u001b\]99;i=opencode-42-0:d=0:p=title;/)
+  expect(writes[0]).toContain("\u001b]99;i=opencode-42-0:d=1:p=body;")
+})
+
+test("uses iTerm2 OSC 9 when the terminal is iTerm2", async () => {
+  const writes: string[] = []
+  const plugin = createPlugin({
+    environment: { TERM_PROGRAM: "iTerm.app" },
+    config: normalizeConfig({}),
+    host: "dev.example.test",
+    appendFile: (_path, data) => writes.push(data),
+  })
+  const hooks = await plugin(input)
+
+  await hooks.event?.({ event: { type: "session.error", properties: { sessionID: "main" } } as never })
+
+  expect(writes[0]).toBe("\u001b]9;OpenCode: Session error: dev • demo\u0007")
+})
+
+test("uses each tmux client's terminal protocol in auto mode", async () => {
+  const writes: Array<[string, string]> = []
+  const plugin = createPlugin({
+    environment: { TMUX_PANE: "%7" },
+    config: normalizeConfig({}),
+    command: async (_command, args) => {
+      if (args[0] === "display-message") return "main\t0\t2\tCode\n"
+      if (args[0] === "list-clients") {
+        return "/dev/pts/3\txterm-kitty\tkitty 0.40\n/dev/pts/4\txterm-256color\tghostty 1.3.1\n"
+      }
+      return ""
+    },
+    appendFile: (path, data) => writes.push([path, data]),
+  })
+  const hooks = await plugin(input)
+
+  await hooks.event?.({ event: { type: "session.error", properties: { sessionID: "main" } } as never })
+
+  expect(writes[0]?.[0]).toBe("/dev/pts/3")
+  expect(writes[0]?.[1]).toContain("\u001b]99;")
+  expect(writes[1]?.[0]).toBe("/dev/pts/4")
+  expect(writes[1]?.[1]).toContain("\u001b]777;")
 })
 
 test("does not notify child sessions by default", async () => {

@@ -10,7 +10,7 @@ export const NOTIFICATION_EVENTS = [
 ] as const
 
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number]
-export type Protocol = "osc777"
+export type Protocol = "auto" | "osc777" | "osc99" | "osc9"
 
 export interface NotifyConfig {
   events: Set<NotificationEvent>
@@ -25,7 +25,7 @@ export const defaultConfig: NotifyConfig = {
   notifyChildSessions: false,
   notifyAllClients: true,
   rememberLastTarget: true,
-  protocol: "osc777",
+  protocol: "auto",
 }
 
 type ConfigInput = {
@@ -53,7 +53,10 @@ export function normalizeConfig(input: unknown): NotifyConfig {
       if (enabled === false) events.delete(event)
     }
   }
-  const protocol: Protocol = value.protocol === "osc777" ? value.protocol : "osc777"
+  const protocol: Protocol = value.protocol === "osc99" || value.protocol === "osc9" ||
+    value.protocol === "osc777" || value.protocol === "auto"
+    ? value.protocol
+    : "auto"
 
   return {
     events,

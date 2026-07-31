@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added automatic Kitty OSC 99 and iTerm2 OSC 9 notification support.
+- Detects the terminal protocol separately for each attached tmux client while
+  preserving OSC 777 as the default fallback.
+
 ## 1.0.0
 
 - Desktop notifications for OpenCode over SSH in tmux via OSC 777.

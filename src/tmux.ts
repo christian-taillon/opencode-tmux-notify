@@ -10,6 +10,12 @@ export interface PaneLocation {
   windowName: string
 }
 
+export interface ClientTarget {
+  tty: string
+  termName: string
+  termType: string
+}
+
 export type Command = (command: string, args: string[]) => Promise<string>
 
 export function defaultCommand(command: string, args: string[]): Promise<string> {
@@ -52,6 +58,23 @@ export function createTmuxHelpers(command: Command = defaultCommand) {
           .split("\n")
           .map((tty) => tty.trim())
           .filter(Boolean)
+      } catch {
+        return []
+      }
+    },
+
+    async clientTargets(session: string, allClients: boolean): Promise<ClientTarget[]> {
+      try {
+        const args = ["list-clients"]
+        if (!allClients) args.push("-t", session)
+        args.push("-F", "#{client_tty}\t#{client_termname}\t#{client_termtype}")
+        return (await command("tmux", args))
+          .split("\n")
+          .map((line) => {
+            const [tty, termName = "", termType = ""] = line.trim().split("\t")
+            return { tty, termName, termType }
+          })
+          .filter((target): target is ClientTarget => Boolean(target.tty))
       } catch {
         return []
       }
